@@ -9,22 +9,22 @@ pipeline {
             }
         }
 
-        stage('Setup & Build Dependencies') {
+        stage('Build, Test & Package') {
             steps {
                 dir('spring-boot-demo') {
                     sh '''
                         mvn -version
-                        mvn -B dependency:resolve
+                        mvn -B clean test package
                     '''
                 }
             }
         }
 
-        stage('Build & Test') {
+        stage('Deploy to Nexus') {
             steps {
                 dir('spring-boot-demo') {
                     sh '''
-                        mvn clean test
+                        mvn -B deploy -DskipTests
                     '''
                 }
             }
