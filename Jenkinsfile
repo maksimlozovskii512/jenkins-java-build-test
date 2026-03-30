@@ -5,7 +5,11 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git 'git@github.com:maksimlozovskii512/jenkins-java-demo.git'
+                sshagent(credentials: ['git-ssh-key']) {
+                    sh '''
+                        git clone git@github.com:maksimlozovskii512/jenkins-java-demo.git
+                    '''
+                }
             }
         }
 
@@ -31,13 +35,11 @@ pipeline {
                     )]) {
 
                         sh '''
-                        # fail fast if creds missing
                         if [ -z "$NEXUS_USER" ] || [ -z "$NEXUS_PASS" ]; then
                             echo "Missing Nexus credentials"
                             exit 1
                         fi
 
-                        # generate settings.xml dynamically
                         cat > settings.xml <<EOF
 <settings>
   <servers>
