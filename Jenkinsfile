@@ -11,25 +11,29 @@ pipeline {
 
         stage('Setup & Build Dependencies') {
             steps {
-                sh '''
-                    mvn -version
-                    mvn -B dependency:resolve
-                '''
+                dir('spring-boot-demo') {
+                    sh '''
+                        mvn -version
+                        mvn -B dependency:resolve
+                    '''
+                }
             }
         }
 
         stage('Build & Test') {
             steps {
-                sh '''
-                    mvn clean test
-                '''
+                dir('spring-boot-demo') {
+                    sh '''
+                        mvn clean test
+                    '''
+                }
             }
         }
     }
 
     post {
         always {
-            junit '**/target/surefire-reports/*.xml'
+            junit 'spring-boot-demo/**/target/surefire-reports/*.xml'
         }
     }
 }
