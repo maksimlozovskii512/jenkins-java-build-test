@@ -5,11 +5,8 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                sshagent(credentials: ['git-ssh-key']) {
-                    sh '''
-                        git clone git@github.com:maksimlozovskii512/jenkins-java-demo.git
-                    '''
-                }
+                git url: 'git@github.com:maksimlozovskii512/jenkins-java-demo.git',
+                    credentialsId: 'git-ssh-key'
             }
         }
 
