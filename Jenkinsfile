@@ -1,6 +1,23 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven3'
+        jdk 'JDK17'
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 20, unit: 'MINUTES')
+    }
+
+    environment {
+        APP_DIR = 'spring-boot-demo'
+        MAVEN_OPTS = '-Dmaven.repo.local=.m2/repository'
+    }
+
     stages {
 
         stage('Checkout') {
@@ -9,20 +26,28 @@ pipeline {
             }
         }
 
-        stage('Build, Test & Package') {
+        stage('Build & Test') {
             steps {
-                dir('spring-boot-demo') {
-                    sh '''
-                        mvn -version
-                        mvn -B clean test package
-                    '''
+                dir("${APP_DIR}") {
+                    sh 'mvn -B clean verify'
                 }
             }
         }
 
-        stage('Deploy to Nexus') {
+        stage('Package Artifact') {
             steps {
-                dir('spring-boot-demo') {
+                dir("${APP_DIR}") {
+                    sh 'mvn -B package -DskipTests'
+                }
+            }
+        }
+
+        stage('Deploy Snapshots') {
+            when {
+                branch 'main'
+            }
+            steps {
+                dir("${APP_DIR}") {
 
                     withCredentials([usernamePassword(
                         credentialsId: 'nexus-deploy',
@@ -30,26 +55,16 @@ pipeline {
                         passwordVariable: 'NEXUS_PASS'
                     )]) {
 
-                        sh '''
-                        if [ -z "$NEXUS_USER" ] || [ -z "$NEXUS_PASS" ]; then
-                            echo "Missing Nexus credentials"
-                            exit 1
-                        fi
+                        configFileProvider([
+                            configFile(fileId: 'maven-settings-nexus', targetLocation: 'settings.xml')
+                        ]) {
 
-                        cat > settings.xml <<EOF
-                            <settings>
-                            <servers>
-                                <server>
-                                <id>nexus-snapshots</id>
-                                <username>${NEXUS_USER}</username>
-                                <password>${NEXUS_PASS}</password>
-                                </server>
-                            </servers>
-                            </settings>
-                            EOF
+                            sh '''
+                                set -e
 
-                        mvn -B -s settings.xml deploy -DskipTests
-                        '''
+                                mvn -B -s settings.xml deploy -DskipTests
+                            '''
+                        }
                     }
                 }
             }
@@ -58,7 +73,11 @@ pipeline {
 
     post {
         always {
-            junit 'spring-boot-demo/**/target/surefire-reports/*.xml'
+            junit "${APP_DIR}/**/target/surefire-reports/*.xml"
+        }
+
+        success {
+            archiveArtifacts artifacts: "${APP_DIR}/target/*.jar", fingerprint: true
         }
     }
-}
+}   
