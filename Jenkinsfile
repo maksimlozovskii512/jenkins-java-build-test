@@ -5,8 +5,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git url: 'git@github.com:maksimlozovskii512/jenkins-java-demo.git',
-                    credentialsId: 'git-ssh-key'
+                checkout scm
             }
         }
 
@@ -38,16 +37,16 @@ pipeline {
                         fi
 
                         cat > settings.xml <<EOF
-<settings>
-  <servers>
-    <server>
-      <id>nexus-snapshots</id>
-      <username>${NEXUS_USER}</username>
-      <password>${NEXUS_PASS}</password>
-    </server>
-  </servers>
-</settings>
-EOF
+                            <settings>
+                            <servers>
+                                <server>
+                                <id>nexus-snapshots</id>
+                                <username>${NEXUS_USER}</username>
+                                <password>${NEXUS_PASS}</password>
+                                </server>
+                            </servers>
+                            </settings>
+                            EOF
 
                         mvn -B -s settings.xml deploy -DskipTests
                         '''
