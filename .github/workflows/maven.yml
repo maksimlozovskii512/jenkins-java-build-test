@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -22,4 +21,5 @@ jobs:
         cache: maven
 
     - name: Build and Test with Maven
-      run: mvn -B clean verify --file pom.xml
+      working-directory: spring-boot-demo
+      run: mvn -B clean verify
