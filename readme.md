@@ -20,8 +20,7 @@ git remote rm origin
 ```bash
 git remote add origin <your repository>
 ```
-5. Edit the JenkinsFile to use your repository
-7. Get Jenkins credentials
+5. Get Jenkins credentials
 
 Access jenkins container shell
 ```bash
@@ -31,15 +30,15 @@ get credentials
 ```bash
 cat /var/jenkins_home/secrets/initialAdminPassword
 ```
-7. Access Jenkins on localhost:8080 using this password
-8. Install suggested plugins
-9. Create new user, save and start using Jenkins
-10. If you are on linux, generate a new SSH key If you are on windows, get a shell into the Jenkins container and generate an SSH key using the same command. (Make sure the key is not in ~/.ssh as it might break your existing SSH keys)
+6. Access Jenkins on localhost:8080 using this password
+7. Install suggested plugins
+8. Create new user, save and start using Jenkins
+9. If you are on linux, generate a new SSH key If you are on windows, get a shell into the Jenkins container and generate an SSH key using the same command. (Make sure the key is not in ~/.ssh as it might break your existing SSH keys)
 
 ```bash
 ssh-keygen -t ed25519 -C "jenkins-pull" -f </path/to/directory>/id_ed25519
 ```
-11. Once you have a private id_ed25519 and public id_ed25519.pub keys, in Jenkins settings go to credentials -> add credentials -> SSH Username with private key.
+10. Once you have a private id_ed25519 and public id_ed25519.pub keys, in Jenkins settings go to credentials -> add credentials -> SSH Username with private key.
 ```bash
 - Scope : global
 - ID : jenkins-pull
@@ -49,33 +48,79 @@ ssh-keygen -t ed25519 -C "jenkins-pull" -f </path/to/directory>/id_ed25519
 leave the rest blank
 ```
 
-12. Access Nexus via localhost:8081 and login with username = admin and password that you can find using this command 
+11. Access Nexus via localhost:8081 and login with username = admin and password that you can find using this command 
 ```bash
 docker exec -it nexus cat /nexus-data/admin.password
 ```
 
-13. Create new password and enable anonymous mode
-14. Create new user "jenkins-pull"
+12. Create new password and disable anonymous mode
 
+13. create new role in nexus
+Settings -> Roles -> Create Role
 
-create new role in nexus
 ```bash
 type: nexus-role
 role-id: nexus-deploy
 role-name: nexus-deploy
 
 privilages:
-- nx-repository-view-maven2-*-add
-- nx-repository-view-maven2-*-browse
-- nx-repository-view-maven2-*-read
 - nx-repository-view-maven2-maven-snapshots-add
 - nx-repository-view-maven2-maven-snapshots-edit
 - nx-repository-view-maven2-maven-snapshots-read
+- nx-repository-view-maven2-maven-releases-add
+- nx-repository-view-maven2-maven-releases-edit
+- nx-repository-view-maven2-maven-releases-read
 ```
 create new user in nexus
+```bash
 ID: nexus-deploy
 first-name: nexus
 last-name: deploy
 email: nexus-deploy@mail.com
 status: Active
 roles: nexus-deploy
+```
+14. Configure pipeline tools
+Jenkins settings -> tools; 
+under JDK -> name: JDK17; 
+under Maven -> name: Maven3 and use version 3.9
+
+15. Configure settings.xml in Jenkins
+Jenkins settings -> Managed files;
+Add new config -> Maven settings.xml;
+In ID box -> maven-settings-nexus;
+In name box -> maven-settings-nexus;
+In content ->
+```bash
+<settings>
+  <servers>
+    <server>
+      <id>nexus-snapshots</id>
+      <username>${env.NEXUS_USER}</username>
+      <password>${env.NEXUS_PASS}</password>
+    </server>
+  </servers>
+</settings>
+```
+Submit
+
+16. Ensure your pom.xmk contains
+```bash
+<distributionManagement>
+  <snapshotRepository>
+    <id>nexus-snapshots</id>
+    <url>http://nexus:8081/repository/maven-snapshots/</url>
+  </snapshotRepository>
+
+  <repository>
+    <id>nexus-releases</id>
+    <url>http://nexus:8081/repository/maven-releases/</url>
+  </repository>
+</distributionManagement>
+```
+
+17. Configure Jenkins pipeline
+New item -> name: pull-build-deploy -> pipeline -> Pipeline script from SCM -> SCM=Git -> paste your repostiory SSH url and use jenkins-pull credentials
+
+18. Run Pipeline
+19. On build SUCCESS, check Nexus: Browse -> maven snapshots -> should see your snapshot stored
